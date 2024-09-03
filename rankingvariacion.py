@@ -24,6 +24,9 @@ if st.button("Obtener Datos"):
     stock_data = yf.download(ticker, start=start_date, end=end_date)
 
     if not stock_data.empty:
+        # Format the index to display only the date
+        stock_data.index = stock_data.index.date
+
         # Calculate Percentage Variation from the previous trading day
         stock_data['Variación %'] = stock_data['Close'].pct_change() * 100
         
