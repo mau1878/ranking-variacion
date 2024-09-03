@@ -33,11 +33,11 @@ if st.button("Obtener Datos"):
         # Calculate the distance between open and closing values that day (in percentage)
         stock_data['Distancia Apertura-Cierre (%)'] = ((stock_data['Close'] - stock_data['Open']) / stock_data['Open']) * 100
         
-        # Add a ranking column starting from 1
-        stock_data['Ranking'] = range(1, len(stock_data) + 1)
-        
         # Prepare data for display, round to two decimals
-        display_data = stock_data[['Ranking', 'Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
+        display_data = stock_data[['Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
+
+        # Add a ranking column starting from 1 after preparing the final display data
+        display_data.insert(0, 'Ranking', range(1, len(display_data) + 1))
         
         # Display the data in a Streamlit data table
         st.dataframe(display_data)
