@@ -36,10 +36,14 @@ if st.button("Obtener Datos"):
         rankings = pd.Series(range(1, len(display_data) + 1), name='Ranking')
 
         # Combine ranking and data for display (without sorting on Ranking)
-        st.write("Ranking de los días:")
-        st.write(rankings)
+        col1, col2 = st.columns([1, 5])  # Adjust the ratio to ensure columns look well-aligned
 
-        st.write("Datos Históricos:")
-        st.dataframe(display_data)
+        with col1:
+            st.write("Ranking")
+            st.table(rankings)
+
+        with col2:
+            st.write("Datos Históricos")
+            st.dataframe(display_data)
     else:
         st.error("No hay datos disponibles para el rango de fechas seleccionado.")
