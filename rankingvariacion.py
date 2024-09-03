@@ -40,6 +40,6 @@ if st.button("Obtener Datos"):
         display_data = stock_data[['Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
         
         # Display the data in a Streamlit data table with a taller view
-        st.dataframe(display_data, height=600)
+        st.dataframe(display_data, height=1200)
     else:
         st.error("No hay datos disponibles para el rango de fechas seleccionado.")
