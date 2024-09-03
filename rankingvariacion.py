@@ -1,6 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+from datetime import datetime, timedelta
 
 # Function to calculate the percentage variation between two values
 def calculate_percentage_change(new_value, old_value):
@@ -14,7 +15,9 @@ ticker = st.text_input("Enter Stock Ticker (e.g., AAPL, MSFT, TSLA):", value="AA
 
 # Set the minimum date to January 1, 1980
 start_date = st.date_input("Start Date", value=pd.to_datetime("2023-01-01"), min_value=pd.to_datetime("1980-01-01"))
-end_date = st.date_input("End Date", value=pd.to_datetime("2023-12-31"))
+
+# Set the end date to "the day after today"
+end_date = st.date_input("End Date", value=datetime.today() + timedelta(days=1))
 
 if st.button("Fetch Data"):
     # Fetch data from yfinance
@@ -30,8 +33,8 @@ if st.button("Fetch Data"):
         # Calculate the distance between open and closing values that day (in percentage)
         stock_data['Open-Close Distance (%)'] = ((stock_data['Close'] - stock_data['Open']) / stock_data['Open']) * 100
         
-        # Prepare data for display
-        display_data = stock_data[['Close', 'Percentage Variation', 'Max-Min Distance (%)', 'Open-Close Distance (%)']]
+        # Prepare data for display, round to two decimals
+        display_data = stock_data[['Close', 'Percentage Variation', 'Max-Min Distance (%)', 'Open-Close Distance (%)']].round(2)
         
         # Display the data in a Streamlit data table
         st.dataframe(display_data)
