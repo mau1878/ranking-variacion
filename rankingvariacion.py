@@ -37,7 +37,13 @@ if st.button("Obtener Datos"):
         display_data = stock_data[['Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
 
         # Add a ranking column starting from 1 after preparing the final display data
-        display_data.insert(0, 'Ranking', range(1, len(display_data) + 1))
+        display_data['Ranking'] = range(1, len(display_data) + 1)
+        
+        # Reorder columns to place Ranking first
+        display_data = display_data[['Ranking', 'Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']]
+
+        # Convert the Ranking column to a string type to make it static
+        display_data['Ranking'] = display_data['Ranking'].astype(str)
         
         # Display the data in a Streamlit data table
         st.dataframe(display_data)
