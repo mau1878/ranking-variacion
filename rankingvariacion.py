@@ -3,10 +3,6 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 
-# Function to calculate the percentage variation between two values
-def calculate_percentage_change(new_value, old_value):
-    return ((new_value - old_value) / old_value) * 100
-
 # Streamlit app
 st.title("Tabla Histórica de Datos de Acciones")
 
@@ -37,15 +33,13 @@ if st.button("Obtener Datos"):
         display_data = stock_data[['Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
 
         # Add a ranking column starting from 1 after preparing the final display data
-        display_data['Ranking'] = range(1, len(display_data) + 1)
-        
-        # Reorder columns to place Ranking first
-        display_data = display_data[['Ranking', 'Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']]
+        rankings = pd.Series(range(1, len(display_data) + 1), name='Ranking')
 
-        # Convert the Ranking column to a string type to make it static
-        display_data['Ranking'] = display_data['Ranking'].astype(str)
-        
-        # Display the data in a Streamlit data table
+        # Combine ranking and data for display (without sorting on Ranking)
+        st.write("Ranking de los días:")
+        st.write(rankings)
+
+        st.write("Datos Históricos:")
         st.dataframe(display_data)
     else:
         st.error("No hay datos disponibles para el rango de fechas seleccionado.")
