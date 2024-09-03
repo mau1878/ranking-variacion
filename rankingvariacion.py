@@ -8,7 +8,7 @@ def calculate_percentage_change(new_value, old_value):
     return ((new_value - old_value) / old_value) * 100
 
 # Streamlit app
-st.title("Tabla Histórica de Datos de Acciones")
+st.title("Tabla Histórica de Variación de Acciones, índices, ETFs, etc.")
 
 # Input for stock ticker and date range
 ticker = st.text_input("Ingrese el Ticker de la Acción (por ejemplo, AAPL, MSFT, TSLA):", value="AAPL").upper()
