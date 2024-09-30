@@ -37,7 +37,7 @@ if st.button("Obtener Datos"):
         stock_data['Distancia Apertura-Cierre (%)'] = ((stock_data['Close'] - stock_data['Open']) / stock_data['Open']) * 100
         
         # Prepare data for display, round to two decimals
-        display_data = stock_data[['Close', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
+        display_data = stock_data[['Close', 'Volume', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
         
         # Display the data in a Streamlit data table with a taller view
         st.dataframe(display_data, height=1200)
