@@ -10,59 +10,78 @@ def calculate_percentage_change(new_value, old_value):
 
 # Function to fetch data from IOL
 def fetch_iol_data(ticker, start_date, end_date):
-  try:
-      cookies = {
-          'intencionApertura': '0',
-          '__RequestVerificationToken': 'DTGdEz0miQYq1kY8y4XItWgHI9HrWQwXms6xnwndhugh0_zJxYQvnLiJxNk4b14NmVEmYGhdfSCCh8wuR0ZhVQ-oJzo1',
-          'isLogged': '1',
-          'uid': '1107644',
-      }
+    try:
+        cookies = {
+            'intencionApertura': '0',
+            '__RequestVerificationToken': 'DTGdEz0miQYq1kY8y4XItWgHI9HrWQwXms6xnwndhugh0_zJxYQvnLiJxNk4b14NmVEmYGhdfSCCh8wuR0ZhVQ-oJzo1',
+            'isLogged': '1',
+            'uid': '1107644',
+        }
 
-      headers = {
-          'accept': '*/*',
-          'content-type': 'text/plain',
-          'referer': 'https://iol.invertironline.com/titulo/cotizacion/BCBA/',
-          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      }
+        headers = {
+            'accept': '*/*',
+            'content-type': 'text/plain',
+            'referer': 'https://iol.invertironline.com/titulo/cotizacion/BCBA/',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        }
 
-      # Convert dates to timestamps
-      from_timestamp = int(datetime.combine(start_date, datetime.min.time()).timestamp())
-      to_timestamp = int(datetime.combine(end_date, datetime.max.time()).timestamp())
+        # Convert dates to timestamps
+        # Set start_date to beginning of day (00:00:00)
+        from_timestamp = int(datetime.combine(start_date, datetime.min.time()).timestamp())
+        # Set end_date to end of day (23:59:59)
+        to_timestamp = int(datetime.combine(end_date, datetime.max.time()).timestamp())
 
-      params = {
-          'symbolName': ticker.replace('.BA', ''),
-          'exchange': 'BCBA',
-          'from': str(from_timestamp),
-          'to': str(to_timestamp),
-          'resolution': 'D',
-      }
+        # Debug timestamps
+        st.write(f"From timestamp: {from_timestamp} ({datetime.fromtimestamp(from_timestamp)})")
+        st.write(f"To timestamp: {to_timestamp} ({datetime.fromtimestamp(to_timestamp)})")
 
-      response = requests.get(
-          'https://iol.invertironline.com/api/cotizaciones/history',
-          params=params,
-          cookies=cookies,
-          headers=headers,
-      )
+        params = {
+            'symbolName': ticker.replace('.BA', ''),
+            'exchange': 'BCBA',
+            'from': str(from_timestamp),
+            'to': str(to_timestamp),
+            'resolution': 'D',
+        }
 
-      if response.status_code == 200:
-          data = response.json()
-          if data.get('status') == 'ok' and 'bars' in data:
-              df = pd.DataFrame(data['bars'])
-              df['Date'] = pd.to_datetime(df['time'], unit='s').dt.date
-              df = df.rename(columns={
-                  'close': 'Close',
-                  'open': 'Open',
-                  'high': 'High',
-                  'low': 'Low',
-                  'volume': 'Volume'
-              })
-              df = df.set_index('Date')
-              return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+        response = requests.get(
+            'https://iol.invertironline.com/api/cotizaciones/history',
+            params=params,
+            cookies=cookies,
+            headers=headers,
+        )
 
-      return pd.DataFrame()
-  except Exception as e:
-      st.error(f"Error fetching IOL data: {str(e)}")
-      return pd.DataFrame()
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') == 'ok' and 'bars' in data:
+                df = pd.DataFrame(data['bars'])
+                # Debug raw data
+                st.write("Raw data from API:", df.tail())
+                
+                df['Date'] = pd.to_datetime(df['time'], unit='s').dt.date
+                df = df.rename(columns={
+                    'close': 'Close',
+                    'open': 'Open',
+                    'high': 'High',
+                    'low': 'Low',
+                    'volume': 'Volume'
+                })
+                df = df.set_index('Date')
+                
+                # Debug processed data
+                st.write("Processed data:", df.tail())
+                
+                return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+            else:
+                st.warning(f"API Response: {data}")
+        else:
+            st.warning(f"API Status Code: {response.status_code}")
+        
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error fetching IOL data: {str(e)}")
+        import traceback
+        st.write("Error traceback:", traceback.format_exc())
+        return pd.DataFrame()
 
 # Streamlit app
 st.title("Tabla Histórica de Variación de Acciones, índices, ETFs, etc.")
@@ -80,16 +99,16 @@ ticker = st.text_input("Ingrese el Ticker de la Acción (por ejemplo, AAPL, MSFT
 start_date = st.date_input("Fecha de Inicio", value=pd.to_datetime("2023-01-01"), min_value=pd.to_datetime("1980-01-01"))
 
 # Set the end date to "the day after today"
-end_date = st.date_input("Fecha de Fin", value=datetime.today() + timedelta(days=1))
+# Instead of adding one day to today, use end of current day
+end_date = st.date_input("Fecha de Fin", value=datetime.today())
 
 if st.button("Obtener Datos"):
   try:
       # Fetch data based on selected source
       if data_source == 'YFinance':
-          stock_data = yf.download(ticker, start=start_date, end=end_date)
+          stock_data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1))
       else:  # IOL
           stock_data = fetch_iol_data(ticker, start_date, end_date)
-
       if not stock_data.empty:
           # Ensure index is date type
           if isinstance(stock_data.index[0], datetime):
