@@ -62,8 +62,13 @@ def fetch_iol_data(ticker, start_date, end_date):
         st.error(f"Error fetching IOL data: {str(e)}")
         return pd.DataFrame()
 
-# Function to standardize column names
+# Function to standardize and flatten column names
 def standardize_columns(df):
+    # Check if columns are multi-level
+    if isinstance(df.columns, pd.MultiIndex):
+        # Flatten multi-level columns by taking the first level (data type)
+        df.columns = [col[0] for col in df.columns]
+    
     column_mapping = {
         'open': 'Open',
         'high': 'High',
@@ -78,7 +83,6 @@ def standardize_columns(df):
         'Adj Close': 'Close'  # Map Adj Close to Close for yfinance
     }
     df = df.rename(columns=column_mapping)
-    # Keep all columns that exist, not just a strict subset
     available_columns = [col for col in ['Open', 'High', 'Low', 'Close', 'Volume'] if col in df.columns]
     return df[available_columns]
 
@@ -121,7 +125,7 @@ data_source = st.radio(
 )
 
 # Input for stock ticker and date range
-ticker = st.text_input("Ingrese el Ticker de la Acción (por ejemplo, AAPL, MSFT, TSLA):", value="AAPL").upper()
+ticker = st.text_input("Ingrese el Ticker de la Acción (por ejemplo, AAPL, MSFT, TSLA, ^SPX):", value="AAPL").upper()
 start_date = st.date_input("Fecha de Inicio", value=pd.to_datetime("2023-01-01"), min_value=pd.to_datetime("1980-01-01"))
 end_date = st.date_input("Fecha de Fin", value=datetime.today())
 
@@ -140,7 +144,7 @@ if st.button("Obtener Datos"):
             stock_data = fetch_iol_data(ticker, start_date, end_date)
         
         if not stock_data.empty:
-            # Standardize column names
+            # Standardize and flatten column names
             stock_data = standardize_columns(stock_data)
             
             # Debug initial columns
