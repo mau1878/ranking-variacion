@@ -77,6 +77,10 @@ def fetch_iol_data(ticker, start_date, end_date):
 
 # Function to resample data based on selected period
 def resample_data(df, period):
+    # Convert index to DatetimeIndex if it isn't already
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+    
     if period == 'Daily':
         return df
     elif period == 'Weekly':
@@ -127,9 +131,9 @@ if st.button("Obtener Datos"):
             stock_data = fetch_iol_data(ticker, start_date, end_date)
         
         if not stock_data.empty:
-            # Ensure index is date type
+            # Ensure index is date type and convert to DatetimeIndex
             if isinstance(stock_data.index[0], datetime):
-                stock_data.index = stock_data.index.date
+                stock_data.index = pd.to_datetime(stock_data.index.date)
             
             # Resample data based on selected period
             stock_data = resample_data(stock_data, period)
