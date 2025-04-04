@@ -28,9 +28,6 @@ def fetch_iol_data(ticker, start_date, end_date):
         from_timestamp = int(datetime.combine(start_date, datetime.min.time()).timestamp())
         to_timestamp = int(datetime.combine(end_date, datetime.max.time()).timestamp())
 
-        st.write(f"From timestamp: {from_timestamp} ({datetime.fromtimestamp(from_timestamp)})")
-        st.write(f"To timestamp: {to_timestamp} ({datetime.fromtimestamp(to_timestamp)})")
-
         params = {
             'symbolName': ticker.replace('.BA', ''),
             'exchange': 'BCBA',
@@ -50,8 +47,6 @@ def fetch_iol_data(ticker, start_date, end_date):
             data = response.json()
             if data.get('status') == 'ok' and 'bars' in data:
                 df = pd.DataFrame(data['bars'])
-                st.write("Raw data from API:", df.tail())
-                
                 df['Date'] = pd.to_datetime(df['time'], unit='s').dt.date
                 df = df.rename(columns={
                     'close': 'Close',
@@ -61,19 +56,36 @@ def fetch_iol_data(ticker, start_date, end_date):
                     'volume': 'Volume'
                 })
                 df = df.set_index('Date')
-                st.write("Processed data:", df.tail())
                 return df[['Open', 'High', 'Low', 'Close', 'Volume']]
-            else:
-                st.warning(f"API Response: {data}")
-        else:
-            st.warning(f"API Status Code: {response.status_code}")
-        
         return pd.DataFrame()
     except Exception as e:
         st.error(f"Error fetching IOL data: {str(e)}")
-        import traceback
-        st.write("Error traceback:", traceback.format_exc())
         return pd.DataFrame()
+
+# Function to standardize column names
+def standardize_columns(df):
+    # Standardize column names to match expected format
+    column_mapping = {
+        'open': 'Open',
+        'high': 'High',
+        'low': 'Low',
+        'close': 'Close',
+        'volume': 'Volume',
+        'Open': 'Open',
+        'High': 'High',
+        'Low': 'Low',
+        'Close': 'Close',
+        'Volume': 'Volume',
+        'OPEN': 'Open',
+        'HIGH': 'High',
+        'LOW': 'Low',
+        'CLOSE': 'Close',
+        'VOLUME': 'Volume'
+    }
+    df = df.rename(columns=column_mapping)
+    # Ensure only required columns are kept
+    required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+    return df[[col for col in required_columns if col in df.columns]]
 
 # Function to resample data based on selected period
 def resample_data(df, period):
@@ -111,8 +123,6 @@ data_source = st.radio(
 
 # Input for stock ticker and date range
 ticker = st.text_input("Ingrese el Ticker de la Acción (por ejemplo, AAPL, MSFT, TSLA):", value="AAPL").upper()
-
-# Set the minimum date to January 1, 1980
 start_date = st.date_input("Fecha de Inicio", value=pd.to_datetime("2023-01-01"), min_value=pd.to_datetime("1980-01-01"))
 end_date = st.date_input("Fecha de Fin", value=datetime.today())
 
@@ -131,6 +141,9 @@ if st.button("Obtener Datos"):
             stock_data = fetch_iol_data(ticker, start_date, end_date)
         
         if not stock_data.empty:
+            # Standardize column names
+            stock_data = standardize_columns(stock_data)
+            
             # Ensure index is date type and convert to DatetimeIndex
             if isinstance(stock_data.index[0], datetime):
                 stock_data.index = pd.to_datetime(stock_data.index.date)
