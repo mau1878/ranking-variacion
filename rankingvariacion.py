@@ -64,28 +64,23 @@ def fetch_iol_data(ticker, start_date, end_date):
 
 # Function to standardize column names
 def standardize_columns(df):
-    # Standardize column names to match expected format
     column_mapping = {
         'open': 'Open',
         'high': 'High',
         'low': 'Low',
         'close': 'Close',
         'volume': 'Volume',
-        'Open': 'Open',
-        'High': 'High',
-        'Low': 'Low',
-        'Close': 'Close',
-        'Volume': 'Volume',
         'OPEN': 'Open',
         'HIGH': 'High',
         'LOW': 'Low',
         'CLOSE': 'Close',
-        'VOLUME': 'Volume'
+        'VOLUME': 'Volume',
+        'Adj Close': 'Close'  # Map Adj Close to Close for yfinance
     }
     df = df.rename(columns=column_mapping)
-    # Ensure only required columns are kept
-    required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-    return df[[col for col in required_columns if col in df.columns]]
+    # Keep all columns that exist, not just a strict subset
+    available_columns = [col for col in ['Open', 'High', 'Low', 'Close', 'Volume'] if col in df.columns]
+    return df[available_columns]
 
 # Function to resample data based on selected period
 def resample_data(df, period):
@@ -93,24 +88,28 @@ def resample_data(df, period):
     if not isinstance(df.index, pd.DatetimeIndex):
         df.index = pd.to_datetime(df.index)
     
+    # Debug available columns
+    st.write(f"Columns before resampling: {df.columns.tolist()}")
+    
+    # Define aggregation based on available columns
+    agg_dict = {}
+    if 'Open' in df.columns:
+        agg_dict['Open'] = 'first'
+    if 'High' in df.columns:
+        agg_dict['High'] = 'max'
+    if 'Low' in df.columns:
+        agg_dict['Low'] = 'min'
+    if 'Close' in df.columns:
+        agg_dict['Close'] = 'last'
+    if 'Volume' in df.columns:
+        agg_dict['Volume'] = 'sum'
+
     if period == 'Daily':
         return df
     elif period == 'Weekly':
-        return df.resample('W-MON').agg({
-            'Open': 'first',
-            'High': 'max',
-            'Low': 'min',
-            'Close': 'last',
-            'Volume': 'sum'
-        })
+        return df.resample('W-MON').agg(agg_dict)
     elif period == 'Monthly':
-        return df.resample('M').agg({
-            'Open': 'first',
-            'High': 'max',
-            'Low': 'min',
-            'Close': 'last',
-            'Volume': 'sum'
-        })
+        return df.resample('M').agg(agg_dict)
 
 # Streamlit app
 st.title("Tabla Histórica de Variación de Acciones, índices, ETFs, etc.")
@@ -144,6 +143,9 @@ if st.button("Obtener Datos"):
             # Standardize column names
             stock_data = standardize_columns(stock_data)
             
+            # Debug initial columns
+            st.write(f"Initial columns after standardization: {stock_data.columns.tolist()}")
+            
             # Ensure index is date type and convert to DatetimeIndex
             if isinstance(stock_data.index[0], datetime):
                 stock_data.index = pd.to_datetime(stock_data.index.date)
@@ -151,17 +153,23 @@ if st.button("Obtener Datos"):
             # Resample data based on selected period
             stock_data = resample_data(stock_data, period)
 
-            # Calculate Percentage Variation from the previous period
-            stock_data['Variación %'] = stock_data['Close'].pct_change() * 100
+            # Debug columns after resampling
+            st.write(f"Columns after resampling: {stock_data.columns.tolist()}")
 
-            # Calculate the distance between maximum and minimum values for the period (in percentage)
-            stock_data['Distancia Máx-Mín (%)'] = ((stock_data['High'] - stock_data['Low']) / stock_data['Low']) * 100
-
-            # Calculate the distance between open and closing values for the period (in percentage)
-            stock_data['Distancia Apertura-Cierre (%)'] = ((stock_data['Close'] - stock_data['Open']) / stock_data['Open']) * 100
+            # Calculate metrics only for available columns
+            if 'Close' in stock_data.columns:
+                stock_data['Variación %'] = stock_data['Close'].pct_change() * 100
+            
+            if all(col in stock_data.columns for col in ['High', 'Low']):
+                stock_data['Distancia Máx-Mín (%)'] = ((stock_data['High'] - stock_data['Low']) / stock_data['Low']) * 100
+            
+            if all(col in stock_data.columns for col in ['Close', 'Open']):
+                stock_data['Distancia Apertura-Cierre (%)'] = ((stock_data['Close'] - stock_data['Open']) / stock_data['Open']) * 100
 
             # Prepare data for display, round to two decimals
-            display_data = stock_data[['Close', 'Volume', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
+            display_columns = [col for col in ['Close', 'Volume', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)'] 
+                             if col in stock_data.columns]
+            display_data = stock_data[display_columns].round(2)
 
             # Display the data in a Streamlit data table with a taller view
             st.dataframe(display_data, height=1200)
