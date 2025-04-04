@@ -6,7 +6,7 @@ import requests
 
 # Function to calculate the percentage variation between two values
 def calculate_percentage_change(new_value, old_value):
-  return ((new_value - old_value) / old_value) * 100
+    return ((new_value - old_value) / old_value) * 100
 
 # Function to fetch data from IOL
 def fetch_iol_data(ticker, start_date, end_date):
@@ -25,13 +25,9 @@ def fetch_iol_data(ticker, start_date, end_date):
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         }
 
-        # Convert dates to timestamps
-        # Set start_date to beginning of day (00:00:00)
         from_timestamp = int(datetime.combine(start_date, datetime.min.time()).timestamp())
-        # Set end_date to end of day (23:59:59)
         to_timestamp = int(datetime.combine(end_date, datetime.max.time()).timestamp())
 
-        # Debug timestamps
         st.write(f"From timestamp: {from_timestamp} ({datetime.fromtimestamp(from_timestamp)})")
         st.write(f"To timestamp: {to_timestamp} ({datetime.fromtimestamp(to_timestamp)})")
 
@@ -54,7 +50,6 @@ def fetch_iol_data(ticker, start_date, end_date):
             data = response.json()
             if data.get('status') == 'ok' and 'bars' in data:
                 df = pd.DataFrame(data['bars'])
-                # Debug raw data
                 st.write("Raw data from API:", df.tail())
                 
                 df['Date'] = pd.to_datetime(df['time'], unit='s').dt.date
@@ -66,10 +61,7 @@ def fetch_iol_data(ticker, start_date, end_date):
                     'volume': 'Volume'
                 })
                 df = df.set_index('Date')
-                
-                # Debug processed data
                 st.write("Processed data:", df.tail())
-                
                 return df[['Open', 'High', 'Low', 'Close', 'Volume']]
             else:
                 st.warning(f"API Response: {data}")
@@ -83,13 +75,34 @@ def fetch_iol_data(ticker, start_date, end_date):
         st.write("Error traceback:", traceback.format_exc())
         return pd.DataFrame()
 
+# Function to resample data based on selected period
+def resample_data(df, period):
+    if period == 'Daily':
+        return df
+    elif period == 'Weekly':
+        return df.resample('W-MON').agg({
+            'Open': 'first',
+            'High': 'max',
+            'Low': 'min',
+            'Close': 'last',
+            'Volume': 'sum'
+        })
+    elif period == 'Monthly':
+        return df.resample('M').agg({
+            'Open': 'first',
+            'High': 'max',
+            'Low': 'min',
+            'Close': 'last',
+            'Volume': 'sum'
+        })
+
 # Streamlit app
 st.title("Tabla Histórica de Variación de Acciones, índices, ETFs, etc.")
 
 # Add data source selector
 data_source = st.radio(
-  "Fuente de datos:",
-  ('YFinance', 'IOL (Invertir Online)')
+    "Fuente de datos:",
+    ('YFinance', 'IOL (Invertir Online)')
 )
 
 # Input for stock ticker and date range
@@ -97,40 +110,47 @@ ticker = st.text_input("Ingrese el Ticker de la Acción (por ejemplo, AAPL, MSFT
 
 # Set the minimum date to January 1, 1980
 start_date = st.date_input("Fecha de Inicio", value=pd.to_datetime("2023-01-01"), min_value=pd.to_datetime("1980-01-01"))
-
-# Set the end date to "the day after today"
-# Instead of adding one day to today, use end of current day
 end_date = st.date_input("Fecha de Fin", value=datetime.today())
 
+# Add period selector
+period = st.selectbox(
+    "Período de compresión:",
+    ('Daily', 'Weekly', 'Monthly')
+)
+
 if st.button("Obtener Datos"):
-  try:
-      # Fetch data based on selected source
-      if data_source == 'YFinance':
-          stock_data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1))
-      else:  # IOL
-          stock_data = fetch_iol_data(ticker, start_date, end_date)
-      if not stock_data.empty:
-          # Ensure index is date type
-          if isinstance(stock_data.index[0], datetime):
-              stock_data.index = stock_data.index.date
+    try:
+        # Fetch data based on selected source
+        if data_source == 'YFinance':
+            stock_data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1))
+        else:  # IOL
+            stock_data = fetch_iol_data(ticker, start_date, end_date)
+        
+        if not stock_data.empty:
+            # Ensure index is date type
+            if isinstance(stock_data.index[0], datetime):
+                stock_data.index = stock_data.index.date
+            
+            # Resample data based on selected period
+            stock_data = resample_data(stock_data, period)
 
-          # Calculate Percentage Variation from the previous trading day
-          stock_data['Variación %'] = stock_data['Close'].pct_change() * 100
+            # Calculate Percentage Variation from the previous period
+            stock_data['Variación %'] = stock_data['Close'].pct_change() * 100
 
-          # Calculate the distance between maximum and minimum values that day (in percentage)
-          stock_data['Distancia Máx-Mín (%)'] = ((stock_data['High'] - stock_data['Low']) / stock_data['Low']) * 100
+            # Calculate the distance between maximum and minimum values for the period (in percentage)
+            stock_data['Distancia Máx-Mín (%)'] = ((stock_data['High'] - stock_data['Low']) / stock_data['Low']) * 100
 
-          # Calculate the distance between open and closing values that day (in percentage)
-          stock_data['Distancia Apertura-Cierre (%)'] = ((stock_data['Close'] - stock_data['Open']) / stock_data['Open']) * 100
+            # Calculate the distance between open and closing values for the period (in percentage)
+            stock_data['Distancia Apertura-Cierre (%)'] = ((stock_data['Close'] - stock_data['Open']) / stock_data['Open']) * 100
 
-          # Prepare data for display, round to two decimals
-          display_data = stock_data[['Close', 'Volume', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
+            # Prepare data for display, round to two decimals
+            display_data = stock_data[['Close', 'Volume', 'Variación %', 'Distancia Máx-Mín (%)', 'Distancia Apertura-Cierre (%)']].round(2)
 
-          # Display the data in a Streamlit data table with a taller view
-          st.dataframe(display_data, height=1200)
-      else:
-          st.error("No hay datos disponibles para el rango de fechas seleccionado.")
-  except Exception as e:
-      st.error(f"Error al procesar los datos: {str(e)}")
-      import traceback
-      st.write("Error completo:", traceback.format_exc())
+            # Display the data in a Streamlit data table with a taller view
+            st.dataframe(display_data, height=1200)
+        else:
+            st.error("No hay datos disponibles para el rango de fechas seleccionado.")
+    except Exception as e:
+        st.error(f"Error al procesar los datos: {str(e)}")
+        import traceback
+        st.write("Error completo:", traceback.format_exc())
