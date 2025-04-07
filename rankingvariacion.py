@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 import requests
+import plotly.express as px
 
 # Function to calculate the percentage variation between two values
 def calculate_percentage_change(new_value, old_value):
@@ -64,9 +65,7 @@ def fetch_iol_data(ticker, start_date, end_date):
 
 # Function to standardize and flatten column names
 def standardize_columns(df):
-    # Check if columns are multi-level
     if isinstance(df.columns, pd.MultiIndex):
-        # Flatten multi-level columns by taking the first level (data type)
         df.columns = [col[0] for col in df.columns]
     
     column_mapping = {
@@ -80,7 +79,7 @@ def standardize_columns(df):
         'LOW': 'Low',
         'CLOSE': 'Close',
         'VOLUME': 'Volume',
-        'Adj Close': 'Close'  # Map Adj Close to Close for yfinance
+        'Adj Close': 'Close'
     }
     df = df.rename(columns=column_mapping)
     available_columns = [col for col in ['Open', 'High', 'Low', 'Close', 'Volume'] if col in df.columns]
@@ -88,14 +87,11 @@ def standardize_columns(df):
 
 # Function to resample data based on selected period
 def resample_data(df, period):
-    # Convert index to DatetimeIndex if it isn't already
     if not isinstance(df.index, pd.DatetimeIndex):
         df.index = pd.to_datetime(df.index)
     
-    # Debug available columns
     st.write(f"Columns before resampling: {df.columns.tolist()}")
     
-    # Define aggregation based on available columns
     agg_dict = {}
     if 'Open' in df.columns:
         agg_dict['Open'] = 'first'
@@ -157,9 +153,6 @@ if st.button("Obtener Datos"):
             # Resample data based on selected period
             stock_data = resample_data(stock_data, period)
 
-            # Debug columns after resampling
-            st.write(f"Columns after resampling: {stock_data.columns.tolist()}")
-
             # Calculate metrics only for available columns
             if 'Close' in stock_data.columns:
                 stock_data['Variación %'] = stock_data['Close'].pct_change() * 100
@@ -177,6 +170,38 @@ if st.button("Obtener Datos"):
 
             # Display the data in a Streamlit data table with a taller view
             st.dataframe(display_data, height=1200)
+
+            # Add scatter plot for top 50 days by min-max spread
+            if 'Distancia Máx-Mín (%)' in stock_data.columns:
+                # Prepare data for scatter plot
+                plot_data = stock_data[['Distancia Máx-Mín (%)']].copy()
+                plot_data['Date'] = plot_data.index
+                plot_data['Year'] = plot_data['Date'].dt.year
+                
+                # Get top 50 days by min-max spread
+                top_50 = plot_data.nlargest(50, 'Distancia Máx-Mín (%)')
+                
+                # Create scatter plot
+                fig = px.scatter(
+                    top_50,
+                    x='Date',
+                    y='Distancia Máx-Mín (%)',
+                    color='Year',
+                    title=f'Top 50 Days by Min-Max Spread for {ticker}',
+                    labels={'Distancia Máx-Mín (%)': 'Daily Min-Max Spread (%)'},
+                    hover_data={'Date': '|%Y-%m-%d'}
+                )
+                
+                # Update layout
+                fig.update_layout(
+                    showlegend=True,
+                    height=600,
+                    width=1000
+                )
+                
+                # Display the plot
+                st.plotly_chart(fig)
+
         else:
             st.error("No hay datos disponibles para el rango de fechas seleccionado.")
     except Exception as e:
