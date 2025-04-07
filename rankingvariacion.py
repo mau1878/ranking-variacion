@@ -126,7 +126,7 @@ data_source = st.radio(
 
 # Input for stock ticker and date range
 ticker = st.text_input("Ingrese el Ticker de la Acción (por ejemplo, AAPL, MSFT, TSLA, ^SPX):", value="AAPL").upper()
-start_date = st.date_input("Fecha de Inicio", value=pd.to_datetime("2023-01-01"), min_value=pd.to_datetime("1980-01-01"))
+start_date = st.date_input("Fecha de Inicio", value=pd.to_datetime("2023-01-01"), min_value=pd.to_datetime("1920-01-01"))
 end_date = st.date_input("Fecha de Fin", value=datetime.today())
 
 # Add period selector
